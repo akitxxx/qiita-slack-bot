@@ -18,7 +18,7 @@ func main() {
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// TOKENの検証
+	// verify token
 	VERIFY_TOKEN := os.Getenv("SLACK_BOT_VERIFY_TOKEN")
 	reqBody := request.Body
 	eventsAPIEvent, err := slackevents.ParseEvent(
@@ -34,7 +34,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{}, err
 	}
 
-	// challengeパラメタの検証
+	// verify challenge param
 	if eventsAPIEvent.Type == slackevents.URLVerification {
 		var r *slackevents.ChallengeResponse
 		err := json.Unmarshal([]byte(reqBody), &r)
@@ -48,15 +48,14 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}, nil
 	}
 
-	// イベントのハンドリング
+	// handling events
 	OAUTH_TOKEN := os.Getenv("SLACK_BOT_USER_ACCESS_TOKEN")
 	api := slack.New(OAUTH_TOKEN)
 	if eventsAPIEvent.Type == slackevents.CallbackEvent {
 		innerEvent := eventsAPIEvent.InnerEvent
 		switch ev := innerEvent.Data.(type) {
 		case *slackevents.AppMentionEvent:
-			reply := "hello"
-			api.PostMessage(ev.Channel, slack.MsgOptionText(reply, false))
+			handleAppMentionEvent(api, ev)
 		case *slackevents.MessageEvent:
 			if ev.Channel == "im" {
 				reply := "DM"
@@ -68,4 +67,9 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 	}, nil
+}
+
+func handleAppMentionEvent(api *slack.Client, ev *slackevents.AppMentionEvent) {
+	reply := ev.Text
+	api.PostMessage(ev.Channel, slack.MsgOptionText(reply, false))
 }
