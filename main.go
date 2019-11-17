@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/nlopes/slack"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/nlopes/slack/slackevents"
+
+	qiita "./lib"
 )
 
 func main() {
@@ -70,6 +74,20 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 }
 
 func handleAppMentionEvent(api *slack.Client, ev *slackevents.AppMentionEvent) {
-	reply := ev.Text
+	reply := getRecentUserItems()
 	api.PostMessage(ev.Channel, slack.MsgOptionText(reply, false))
+}
+
+func getRecentUserItems() string {
+	qii, err := qiita.New("https://qiita.com/api/v2", "0d9e28484a401c818f7170af5021e0af40b7a780", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	items, err := qii.GetUserItems(context.Background(), "lelouch99v", 1, 100)
+	if err != nil {
+		panic(err)
+	}
+
+	return strconv.Itoa(len(items))
 }
